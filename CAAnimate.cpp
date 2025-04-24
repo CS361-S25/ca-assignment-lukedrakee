@@ -34,6 +34,11 @@ public:
         doc << GetToggleButton("Toggle");
         doc << GetStepButton("Step");
         
+        initializeCells();
+    }
+
+    // Initialize the cells with random values and set up canvas
+    void initializeCells() {
         // fill cells with 0 to start 
         cells.resize(num_w_boxes, std::vector<float>(num_h_boxes, 0.0));
         next_cells.resize(num_w_boxes, std::vector<float>(num_h_boxes, 0.0));
@@ -46,6 +51,7 @@ public:
         }
     }
 
+    // Get the average value of the 8 neighbors surrounding a cell
     float getNeighborAverage(int x, int y) {
         float neighbor_sum = 0.0;
         int neighbor_count = 0;
@@ -63,33 +69,37 @@ public:
                 neighbor_count++;
             }
         }
-        // Count should always be 8 in theory
+        // neighbor_count should always be 8 in theory
         return neighbor_sum / neighbor_count;
     }
 
-    void DoFrame() override {
+    // Draw the cells on the canvas based on their values
+    // The color is based on the HSV color model, with a lighter color indicating a higher value
+    void drawCells() {
+        // Clear the canvas before drawing
         canvas.Clear();
-
+    
         // Draw the cells accordingly
         for (int x = 0; x < num_w_boxes; x++){
-             for (int y = 0; y < num_h_boxes; y++) {
+                for (int y = 0; y < num_h_boxes; y++) {
                 // H=120 is green, S=1 for full saturation, and V varies with cell value
                 canvas.Rect(x * RECT_SIDE, y * RECT_SIDE, RECT_SIDE, RECT_SIDE, 
                     emp::ColorHSV(120, 1.0, cells[x][y]), "black");
             }
         }
+    }
 
-        // Update the cells based on CA rules
+    // Update the cell values based on CA rules
+    // General outline of rules
+    //      1. If neighbor average is higher than current cell, cell grows faster
+    //      2. If cell reaches threshold, it resets
+    //         (like dying from too much competition)
+    //      3. All cells have a constant baseline growth
+    void updateCells() {
         for (int x = 0; x < num_w_boxes; x++) {
             for (int y = 0; y < num_h_boxes; y++) {
                 float neighborAverage = getNeighborAverage(x, y);
                 float currentState = cells[x][y];
-
-                // General outline of rules
-                // 1. If neighbor average is higher than current cell, cell grows faster
-                // 2. If cell reaches threshold, it resets
-                //    (like dying from too much competition)
-                // 3. All cells have a constant baseline growth
 
                 // Base growth rate that applies to all cells
                 float baseGrowthRate = 0.02;
@@ -123,7 +133,6 @@ public:
                 float noise = 0.02 * (random_generator.GetDouble() - 0.5);
                 next_cells[x][y] += noise;
                 
-                
                 // Ensure values stay between 0 and 1
                 if (next_cells[x][y] > 1.0) next_cells[x][y] = 1.0;
                 if (next_cells[x][y] < 0.0) next_cells[x][y] = 0.0;
@@ -133,6 +142,10 @@ public:
         cells.swap(next_cells);
     }
 
+    void DoFrame() override {
+        drawCells();
+        updateCells();
+    }
 };
 
 CAAnimator animator;
